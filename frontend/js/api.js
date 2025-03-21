@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:9000/backend/api/tasks";
+export const API_URL = "http://localhost:9000/api/tasks";
 
 export async function getTasks() {
   const token = localStorage.getItem("jwtToken");
@@ -43,7 +43,14 @@ export async function updateTask(id, taskData) {
     },
     body: JSON.stringify(taskData),
   });
-  return response.json();
+
+  try {
+    return await response.json();
+  } catch (error) {
+    console.error("Erro ao converter resposta para JSON:", error);
+    console.error("Resposta recebida:", await response.text());
+    throw error;
+  }
 }
 
 export async function deleteTask(id) {

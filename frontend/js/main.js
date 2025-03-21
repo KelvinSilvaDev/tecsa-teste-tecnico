@@ -1,11 +1,6 @@
 import * as api from "./api.js";
 import * as dom from "./dom.js";
 
-async function loadTasks() {
-  const tasks = await api.getTasks();
-  dom.renderTasks(tasks);
-}
-
 window.editTask = async function (id) {
   const task = await api.getTask(id);
   dom.fillForm(task);
@@ -14,7 +9,7 @@ window.editTask = async function (id) {
 window.deleteTask = async function (id) {
   if (confirm("Deseja realmente excluir esta tarefa?")) {
     await api.deleteTask(id);
-    loadTasks();
+    dom.loadTasks();
   }
 };
 
@@ -43,7 +38,7 @@ document
       await api.createTask(taskData);
     }
     dom.resetForm();
-    loadTasks();
+    dom.loadTasks();
   });
 
-window.onload = loadTasks;
+window.onload = dom.loadTasks;

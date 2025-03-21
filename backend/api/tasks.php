@@ -1,8 +1,10 @@
 <?php
+
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
 
 require_once '../config.php';
 require_once '../vendor/autoload.php';
@@ -13,10 +15,9 @@ use Firebase\JWT\Key;
 $secret_key = "YOUR_SECRET_KEY";
 
 
-
 function getBearerToken()
 {
-    $headers = apache_request_headers();
+    $headers = getallheaders();
     if (isset($headers['Authorization'])) {
         if (preg_match('/Bearer\s(\S+)/', $headers['Authorization'], $matches)) {
             return $matches[1];
@@ -24,6 +25,7 @@ function getBearerToken()
     }
     return null;
 }
+
 
 function validateJWT($secret_key)
 {
@@ -43,36 +45,43 @@ function validateJWT($secret_key)
     }
 }
 
-
 if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE'])) {
     validateJWT($secret_key);
 }
-
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
-$request = isset($_SERVER['PATH_INFO']) ? explode('/', trim($_SERVER['PATH_INFO'], '/')) : [];
-
-$resource = array_shift($request);
-if ($resource !== 'tasks') {
-    http_response_code(404);
-    echo json_encode(['error' => 'Recurso não encontrado']);
-    exit();
-}
 
 function getJsonInput()
 {
     return json_decode(file_get_contents("php://input"), true);
 }
 
+
+$method = $_SERVER['REQUEST_METHOD'];
+
+
+$request_uri = trim($_SERVER['REQUEST_URI'], '/');
+$request_parts = explode('/', $request_uri);
+
+
+$id = isset($request_parts[2]) ? (int)$request_parts[2] : null;
+
+
+if (in_array($method, ['PUT', 'DELETE']) && empty($id)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'ID da tarefa não fornecido']);
+    exit();
+}
+
 switch ($method) {
     case 'GET':
-        if (!empty($request)) {
-            $id = (int)array_shift($request);
+        if (!empty($request_parts[2])) {
+
+            $id = (int)$request_parts[2];
             $stmt = $pdo->prepare("SELECT * FROM tasks WHERE id = ?");
             $stmt->execute([$id]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -83,7 +92,7 @@ switch ($method) {
                 echo json_encode(['error' => 'Tarefa não encontrada']);
             }
         } else {
-            // Lista todas as tarefas
+
             $stmt = $pdo->query("SELECT * FROM tasks");
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode($tasks);
@@ -109,13 +118,17 @@ switch ($method) {
         break;
 
     case 'PUT':
-        if (empty($request)) {
+
+        $data = getJsonInput();
+
+
+        $valid_status = ['pending', 'in_progress', 'completed'];
+        if (!in_array($data['status'], $valid_status)) {
             http_response_code(400);
-            echo json_encode(['error' => 'ID da tarefa não fornecido']);
+            echo json_encode(['error' => 'Status inválido']);
             exit();
         }
-        $id = (int)array_shift($request);
-        $data = getJsonInput();
+
         $stmt = $pdo->prepare("UPDATE tasks SET title = ?, description = ?, status = ? WHERE id = ?");
         if ($stmt->execute([$data['title'], $data['description'], $data['status'], $id])) {
             echo json_encode(['message' => 'Tarefa atualizada']);
@@ -126,12 +139,7 @@ switch ($method) {
         break;
 
     case 'DELETE':
-        if (empty($request)) {
-            http_response_code(400);
-            echo json_encode(['error' => 'ID da tarefa não fornecido']);
-            exit();
-        }
-        $id = (int)array_shift($request);
+
         $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = ?");
         if ($stmt->execute([$id])) {
             echo json_encode(['message' => 'Tarefa excluída']);

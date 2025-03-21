@@ -1,5 +1,5 @@
 async function login(username, password) {
-  const response = await fetch("http://localhost:9000/backend/api/auth.php", {
+  const response = await fetch("http://localhost:9000/api/auth", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -13,7 +13,7 @@ async function login(username, password) {
     localStorage.setItem("jwtToken", data.token);
     return { success: true, message: "Login bem-sucedido!" };
   } else {
-    return { success: false, message: data.message || "Erro no login" };
+    return { success: false, message: data.error || "Erro no login" };
   }
 }
 
@@ -38,7 +38,7 @@ document
 
     if (result.success) {
       setTimeout(() => {
-        window.location.href = "/frontend/index.html";
+        window.location.href = "/index.html";
       }, 1000);
     }
   });
@@ -50,7 +50,7 @@ async function fetchData() {
     return;
   }
 
-  const response = await fetch("http://localhost:9000/backend/api/tasks.php", {
+  const response = await fetch("http://localhost:9000/api/tasks", {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
